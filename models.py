@@ -13,6 +13,7 @@ class CreateCompanyRequest(BaseModel):
     admin_name: str
     admin_email: EmailStr
     admin_password: str
+    admin_phone: Optional[str] = None # Added for direct admin contact
     industry: Optional[str] = "General"
 
 class CreateUserRequest(BaseModel):
