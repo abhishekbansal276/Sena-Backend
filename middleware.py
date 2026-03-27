@@ -28,7 +28,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
             request.state.user = {
                 "uid": uid,
                 "email": user_data.get("email"),
-                "companyId": user_data.get("company_id") or user_data.get("companyId"),
+                "orgId": user_data.get("orgId") or user_data.get("company_id") or user_data.get("companyId"),
                 "role": user_data.get("role")
             }
         except Exception as e:
