@@ -57,7 +57,7 @@ async def create_company(req: CreateCompanyRequest, request: Request):
                 "landmark": req.landmark
             },
             "phone": req.company_phone,
-            "ownerUserId": uid,
+            "orgAdminUserId": uid,
             "isActive": True,
             "industry": req.industry,
             "createdAt": firestore.SERVER_TIMESTAMP
@@ -69,8 +69,8 @@ async def create_company(req: CreateCompanyRequest, request: Request):
         user_ref = db.collection('users').document(uid)
         user_data = {
             "name": req.admin_name,
-            "email": req.admin_email,
-            "company_id": company_id,
+            "email": req.company_email, # Using official email as requested
+            "orgId": company_id,
             "role": "admin", # Mapping to UserRole.companyAdmin
             "isActive": True,
             "createdAt": firestore.SERVER_TIMESTAMP,
@@ -81,7 +81,7 @@ async def create_company(req: CreateCompanyRequest, request: Request):
         
         return {
             "status": "success",
-            "company_id": company_id,
+            "orgId": company_id,
             "admin_uid": uid
         }
     except auth.EmailAlreadyExistsError:
@@ -89,10 +89,6 @@ async def create_company(req: CreateCompanyRequest, request: Request):
         raise HTTPException(status_code=400, detail="Admin email already exists")
     except Exception as e:
         print(f"[BACKEND] Fatal Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-    except auth.EmailAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="Admin email already exists")
-    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/create-user")
@@ -114,7 +110,7 @@ async def create_company_user(req: CreateUserRequest, admin = Depends(get_curren
             "name": req.name,
             "email": req.email,
             "phone": req.phone,
-            "company_id": admin['companyId'],
+            "orgId": admin['orgId'], # Using new naming convention
             "role": "user", # Mapping to UserRole.companyUser
             "isActive": True,
             "createdAt": firestore.SERVER_TIMESTAMP,
@@ -125,7 +121,7 @@ async def create_company_user(req: CreateUserRequest, admin = Depends(get_curren
         return {
             "status": "success",
             "uid": uid,
-            "company_id": admin['companyId']
+            "orgId": admin['orgId']
         }
     except auth.EmailAlreadyExistsError:
         raise HTTPException(status_code=400, detail="User email already exists")
