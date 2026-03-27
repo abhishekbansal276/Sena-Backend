@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+firebase-admin
+pydantic
+pydantic-settings
+python-dotenv
