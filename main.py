@@ -92,8 +92,19 @@ async def create_company(req: CreateCompanyRequest, request: Request):
         print(f"[BACKEND] Error: Email already exists.")
         raise HTTPException(status_code=400, detail="Admin email already exists")
     except Exception as e:
-        print(f"[BACKEND] Fatal Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[BACKEND] FATAL ERROR during company creation:\n{error_trace}")
+        
+        # ROLLBACK: If firebase user was created but Firestore failed, delete the user
+        try:
+            if 'uid' in locals():
+                print(f"[BACKEND] Rolling back: Deleting Firebase user {uid}")
+                auth.delete_user(uid)
+        except:
+            pass
+            
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 @app.post("/create-user")
 async def create_company_user(req: CreateUserRequest, admin = Depends(get_current_company_admin)):
