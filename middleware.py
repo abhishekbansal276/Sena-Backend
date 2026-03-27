@@ -6,7 +6,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Exclude public paths
-        public_paths = ["/", "/docs", "/openapi.json", "/redoc"]
+        public_paths = ["/", "/docs", "/openapi.json", "/redoc", "/create-company"]
         if request.url.path in public_paths:
             return await call_next(request)
 
