@@ -22,3 +22,8 @@ class CreateUserRequest(BaseModel):
     phone: Optional[str] = None
     password: str
     role: Optional[str] = "user" # Matches companyUser mapping
+
+class UpdateUserRequest(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    role: str
