@@ -125,13 +125,14 @@ async def create_company_user(req: CreateUserRequest, admin = Depends(get_curren
             "name": req.name,
             "email": req.email,
             "phone": req.phone,
-            "orgId": admin['orgId'], # Using new naming convention
-            "role": "user", # Mapping to UserRole.companyUser
+            "orgId": admin['orgId'], # Organization-scoped identity
+            "role": req.role or "user", 
             "isActive": True,
             "createdAt": firestore.SERVER_TIMESTAMP,
             "createdBy": admin['uid']
         }
         user_ref.set(user_data)
+        print(f"[BACKEND] Success: Created Company User {uid} for Org {admin['orgId']}")
         
         return {
             "status": "success",
@@ -139,8 +140,20 @@ async def create_company_user(req: CreateUserRequest, admin = Depends(get_curren
             "orgId": admin['orgId']
         }
     except auth.EmailAlreadyExistsError:
+        print(f"[BACKEND] Error during user creation: Email {req.email} already exists.")
         raise HTTPException(status_code=400, detail="User email already exists")
     except Exception as e:
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[BACKEND] Error during user creation:\n{error_trace}")
+        
+        # ROLLBACK: Clean up orphaned Auth user
+        try:
+            auth.delete_user(uid)
+            print(f"[BACKEND] Rolling back: Deleted orphaned Firebase user {uid}")
+        except:
+            pass
+            
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/me")
