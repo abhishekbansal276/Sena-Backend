@@ -49,6 +49,14 @@ async def create_company(req: CreateCompanyRequest, request: Request):
         company_data = {
             "name": req.company_name,
             "email": req.company_email,
+            "address": {
+                "street": req.street_address,
+                "city": req.city,
+                "state": req.state,
+                "zip": req.zip_code,
+                "landmark": req.landmark
+            },
+            "phone": req.company_phone,
             "ownerUserId": uid,
             "isActive": True,
             "industry": req.industry,
