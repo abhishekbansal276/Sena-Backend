@@ -57,6 +57,9 @@ async def create_company(req: CreateCompanyRequest, request: Request):
                 "landmark": req.landmark
             },
             "phone": req.company_phone,
+            "adminName": req.admin_name,
+            "adminEmail": req.admin_email, # Business email for profile
+            "adminPhone": req.admin_phone,
             "orgAdminUserId": uid,
             "isActive": True,
             "industry": req.industry,
@@ -70,6 +73,7 @@ async def create_company(req: CreateCompanyRequest, request: Request):
         user_data = {
             "name": req.admin_name,
             "email": req.company_email, # Using official email as requested
+            "phone": req.admin_phone, # Administrative phone
             "orgId": company_id,
             "role": "admin", # Mapping to UserRole.companyAdmin
             "isActive": True,
