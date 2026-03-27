@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException, Depends
 from firebase_admin import auth, firestore
 from firebase_config import db
-from models import CreateCompanyRequest, CreateUserRequest
+from models import CreateCompanyRequest, CreateUserRequest, UpdateUserRequest
 from datetime import datetime
 import uuid
 
@@ -164,6 +164,62 @@ async def create_company_user(req: CreateUserRequest, admin = Depends(get_curren
             pass
             
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/company-users")
+async def get_company_users(admin = Depends(get_current_company_admin)):
+    """List all users belonging to the same organization."""
+    users_ref = db.collection('users').where('orgId', '==', admin['orgId']).stream()
+    users = []
+    for doc in users_ref:
+        u = doc.to_dict()
+        u['uid'] = doc.id
+        users.append(u)
+    return users
+
+@app.put("/update-user/{uid}")
+async def update_company_user(uid: str, req: UpdateUserRequest, admin = Depends(get_current_company_admin)):
+    """Updates a user's role and details."""
+    user_ref = db.collection('users').document(uid)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists or user_doc.to_dict().get('orgId') != admin['orgId']:
+        raise HTTPException(status_code=404, detail="User not found in your organization")
+
+    # Update Firestore
+    user_data = {
+        "name": req.name,
+        "phone": req.phone,
+        "role": req.role
+    }
+    user_ref.update(user_data)
+    
+    # Update Firebase Auth if needed (name/phone)
+    auth_update = {
+        "display_name": req.name
+    }
+    if req.phone:
+        auth_update["phone_number"] = req.phone if req.phone.startswith("+") else f"+91{req.phone}"
+        
+    auth.update_user(uid, **auth_update)
+    
+    return {"status": "success"}
+
+@app.delete("/delete-user/{uid}")
+async def delete_company_user(uid: str, admin = Depends(get_current_company_admin)):
+    """Deletes a user from both Auth and Firestore."""
+    user_ref = db.collection('users').document(uid)
+    user_doc = user_ref.get()
+    
+    if not user_doc.exists or user_doc.to_dict().get('orgId') != admin['orgId']:
+        raise HTTPException(status_code=404, detail="User not found in your organization")
+        
+    # Security: Don't allow admin to delete themselves via this endpoint (usually)
+    if uid == admin['uid']:
+        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
+
+    auth.delete_user(uid)
+    user_ref.delete()
+    return {"status": "success"}
 
 @app.get("/me")
 async def get_my_profile(request: Request):
