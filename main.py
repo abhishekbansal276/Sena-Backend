@@ -206,20 +206,23 @@ async def update_company_user(uid: str, req: UpdateUserRequest, admin = Depends(
 
 @app.delete("/delete-user/{uid}")
 async def delete_company_user(uid: str, admin = Depends(get_current_company_admin)):
-    """Deletes a user from both Auth and Firestore."""
+    """Deactivates a user (sets isActive=False) instead of hard deletion."""
     user_ref = db.collection('users').document(uid)
     user_doc = user_ref.get()
     
     if not user_doc.exists or user_doc.to_dict().get('orgId') != admin['orgId']:
         raise HTTPException(status_code=404, detail="User not found in your organization")
         
-    # Security: Don't allow admin to delete themselves via this endpoint (usually)
     if uid == admin['uid']:
-        raise HTTPException(status_code=400, detail="Cannot delete your own admin account")
+        raise HTTPException(status_code=400, detail="Cannot deactivate your own admin account")
 
-    auth.delete_user(uid)
-    user_ref.delete()
-    return {"status": "success"}
+    # Update Firestore to inactive
+    user_ref.update({"isActive": False})
+    
+    # Disable in Firebase Auth
+    auth.update_user(uid, disabled=True)
+    
+    return {"status": "success", "message": "User deactivated"}
 
 @app.get("/me")
 async def get_my_profile(request: Request):
