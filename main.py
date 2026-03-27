@@ -19,7 +19,9 @@ def get_current_company_admin(request: Request):
 
 # Helper for Super Admin access control
 def get_current_super_admin(request: Request):
-    user = request.state.user
+    user = getattr(request.state, "user", None)
+    if not user:
+         raise HTTPException(status_code=401, detail="Authentication required")
     # Note: In production, this email should be in a secure config/env
     super_admin_emails = ["admin@acodr.com", "super@labordesk.com"]
     if user['email'] not in super_admin_emails:
@@ -27,8 +29,9 @@ def get_current_super_admin(request: Request):
     return user
 
 @app.post("/create-company")
-async def create_company(req: CreateCompanyRequest, admin = Depends(get_current_super_admin)):
-    """Creates a new company and its first admin user. Super Admin only."""
+async def create_company(req: CreateCompanyRequest, request: Request):
+    """Creates a new company and its first admin user. Allows public access for initiation."""
+    print(f"[BACKEND] Creating company: {req.company_name} for admin: {req.admin_email}")
     try:
         # 1. Create Firebase Auth user for the Company Admin
         firebase_user = auth.create_user(
@@ -37,6 +40,7 @@ async def create_company(req: CreateCompanyRequest, admin = Depends(get_current_
             display_name=req.admin_name
         )
         uid = firebase_user.uid
+        print(f"[BACKEND] Created Firebase User: {uid}")
         
         # 2. Create Company document
         company_id = str(uuid.uuid4())
@@ -51,6 +55,7 @@ async def create_company(req: CreateCompanyRequest, admin = Depends(get_current_
             "createdAt": firestore.SERVER_TIMESTAMP
         }
         company_ref.set(company_data)
+        print(f"[BACKEND] Created Company record: {company_id}")
         
         # 3. Create User document for the Company Admin
         user_ref = db.collection('users').document(uid)
@@ -61,15 +66,22 @@ async def create_company(req: CreateCompanyRequest, admin = Depends(get_current_
             "role": "admin", # Mapping to UserRole.companyAdmin
             "isActive": True,
             "createdAt": firestore.SERVER_TIMESTAMP,
-            "createdBy": admin['uid']
+            "createdBy": "system_init"
         }
         user_ref.set(user_data)
+        print(f"[BACKEND] Created Admin Profile and linked to company.")
         
         return {
             "status": "success",
             "company_id": company_id,
             "admin_uid": uid
         }
+    except auth.EmailAlreadyExistsError:
+        print(f"[BACKEND] Error: Email already exists.")
+        raise HTTPException(status_code=400, detail="Admin email already exists")
+    except Exception as e:
+        print(f"[BACKEND] Fatal Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
     except auth.EmailAlreadyExistsError:
         raise HTTPException(status_code=400, detail="Admin email already exists")
     except Exception as e:
