@@ -111,12 +111,21 @@ async def create_company_user(req: CreateUserRequest, admin = Depends(get_curren
     """Creates a new user inside the same company as the admin. Company Admin only."""
     try:
         # Check global email uniqueness (handled by Firebase Auth automatically)
-        firebase_user = auth.create_user(
-            email=req.email,
-            password=req.password,
-            display_name=req.name,
-            phone_number=req.phone if req.phone.startswith("+") else f"+91{req.phone}"
-        )
+        # Format phone number for Firebase (must be E.164)
+        phone_formatted = None
+        if req.phone and len(req.phone.strip()) > 0:
+            phone_formatted = req.phone if req.phone.startswith("+") else f"+91{req.phone}"
+
+        # Build create_user kwargs
+        auth_kwargs = {
+            "email": req.email,
+            "password": req.password,
+            "display_name": req.name,
+        }
+        if phone_formatted:
+            auth_kwargs["phone_number"] = phone_formatted
+
+        firebase_user = auth.create_user(**auth_kwargs)
         uid = firebase_user.uid
         
         # Create Firestore User record
