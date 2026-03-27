@@ -19,6 +19,6 @@ class CreateCompanyRequest(BaseModel):
 class CreateUserRequest(BaseModel):
     name: str
     email: EmailStr
-    phone: str
+    phone: Optional[str] = None
     password: str
     role: Optional[str] = "user" # Matches companyUser mapping
