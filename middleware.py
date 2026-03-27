@@ -25,11 +25,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 raise HTTPException(status_code=404, detail="User not found in system")
             
             user_data = user_doc.to_dict()
+            if not user_data.get("isActive", True):
+                raise HTTPException(status_code=403, detail="Account is inactive. Contact administrator.")
+
             request.state.user = {
                 "uid": uid,
                 "email": user_data.get("email"),
                 "orgId": user_data.get("orgId") or user_data.get("company_id") or user_data.get("companyId"),
-                "role": user_data.get("role")
+                "role": user_data.get("role"),
+                "isActive": True
             }
         except Exception as e:
             raise HTTPException(status_code=401, detail=f"Token validation failed: {str(e)}")
